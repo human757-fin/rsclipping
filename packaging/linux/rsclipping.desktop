@@ -6,6 +6,6 @@ Comment=Screen clipper and recorder
 Exec=rsclipping
 Icon=rsclipping
 Terminal=false
-Categories=Utility;AudioVideo;Graphics;Recorder;
+Categories=AudioVideo;
 Keywords=clip;screen;recorder;screenshot;
 StartupNotify=true
