@@ -56,10 +56,10 @@ jobs:
       - name: Build AppImage
         run: bash packaging/package-linux.sh
 
-      - uses: actions/upload-artifact@v4
+- uses: actions/upload-artifact@v4
         with:
           name: linux
-          path: release/*.AppImage
+          path: release/rsclipping-*.AppImage
           if-no-files-found: error
 
   publish:
