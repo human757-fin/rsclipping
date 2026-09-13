@@ -1,4 +1,4 @@
-; RSClipping installer - dark theme (Inno Setup 6.4+ for DarkMode=force)
+; RSClipping installer - dark theme (Inno Setup 6.6+ for native dark mode)
 ; Build:
 ;   ISCC.exe /DMyAppVersion=0.1.0 packaging\rsclipping.iss
 ; In CI, install Inno Setup 6 (choco install innosetup) then run the above.
@@ -29,9 +29,11 @@ OutputDir=..\release
 OutputBaseFilename=rsclipping-setup-{#MyAppVersion}
 Compression=lzma2/ultra
 SolidCompression=yes
-WizardStyle=modern
-WizardResizable=no
-DarkMode=force
+WizardStyle=modern dark includetitlebar
+WizardImageFile=assets\wizard-big.png
+WizardSmallImageFile=assets\wizard-small.png
+WizardImageBackColor=#101218
+WizardImageBackColorDynamicDark=#101218
 SetupIconFile=assets\rsclipping.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 UninstallDisplayName={#MyAppName}
@@ -72,9 +74,6 @@ Type: filesandordirs; Name: "{app}"
 const
   DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
 
-type
-  THandle = NativeInt;
-
 procedure DwmSetWindowAttribute(hwnd: HWND; attr: DWORD; const ref: Boolean; cbSize: DWORD);
   external 'DwmSetWindowAttribute@dwmapi.dll stdcall';
 
@@ -92,12 +91,8 @@ end;
 
 procedure InitializeWizard;
 begin
-  SetDarkTitleBar(WizardForm.Handle);
-  WizardForm.Color := clNone; // DarkMode=force handles the background
-  WizardForm.WelcomeLabel1.Font.Color := clWhite;
-  WizardForm.WelcomeLabel2.Font.Color := clSilver;
-  WizardForm.PageNameLabel.Font.Color := clWhite;
-  WizardForm.PageDescriptionLabel.Font.Color := clSilver;
+  // Native WizardStyle=modern dark handles backgrounds/labels; these
+  // tweaks just guarantee dark text contrast on all Windows versions.
   SetDarkTitleBar(WizardForm.Handle);
 end;
 

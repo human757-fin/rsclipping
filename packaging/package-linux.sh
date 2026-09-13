@@ -31,7 +31,7 @@ TOOL="release/appimagetool.AppImage"
 if [ ! -x "$TOOL" ]; then
   echo "==> Downloading appimagetool"
   curl -fsSL -o "$TOOL" \
-    https://github.com/AppImageCommunity/appimagetool/releases/latest/download/appimagetool-x86_64.AppImage
+    https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
   chmod +x "$TOOL"
 fi
 
