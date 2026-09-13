@@ -21,6 +21,7 @@ mkdir -p "$APP/usr/bin" \
 
 cp target/release/rsclipping "$APP/usr/bin/rsclipping"
 cp packaging/linux/rsclipping.desktop "$APP/usr/share/applications/"
+cp packaging/linux/rsclipping.desktop "$APP/rsclipping.desktop"
 cp packaging/assets/rsclipping.png  "$APP/usr/share/icons/hicolor/256x256/apps/rsclipping.png"
 cp packaging/assets/rsclipping.png  "$APP/usr/share/icons/hicolor/512x512/apps/rsclipping.png"
 cp packaging/assets/rsclipping.png  "$APP/.DirIcon"
@@ -37,7 +38,10 @@ fi
 
 OUT="release/rsclipping-${VERSION}-x86_64.AppImage"
 echo "==> Packaging AppImage"
-ARCH=x86_64 "$TOOL" --appimage-extract-and-run "$APP" "$OUT"
+ARCH=x86_64 "$TOOL" --appimage-extract-and-run \
+  --desktop-file "$APP/rsclipping.desktop" \
+  --icon-file "$APP/.DirIcon" \
+  "$APP" "$OUT"
 rm -rf "$APP"
 
 ls -lh "$OUT"
