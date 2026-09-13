@@ -1479,7 +1479,6 @@ pub fn run(cfg: AppConfig) -> anyhow::Result<()> {
             .with_min_inner_size([820.0, 560.0])
             .with_decorations(false)
             .with_transparent(true)
-            .with_active(false)
             .with_title("RSClipping"),
         ..Default::default()
     };
