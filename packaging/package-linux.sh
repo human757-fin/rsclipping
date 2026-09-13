@@ -38,10 +38,7 @@ fi
 
 OUT="release/rsclipping-${VERSION}-x86_64.AppImage"
 echo "==> Packaging AppImage"
-ARCH=x86_64 "$TOOL" --appimage-extract-and-run \
-  --desktop-file "$APP/rsclipping.desktop" \
-  --icon-file "$APP/.DirIcon" \
-  "$APP" "$OUT"
+ARCH=x86_64 "$TOOL" --appimage-extract-and-run "$APP" "$OUT"
 rm -rf "$APP"
 
 ls -lh "$OUT"
