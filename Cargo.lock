@@ -2730,10 +2730,12 @@ dependencies = [
  "dirs",
  "eframe",
  "env_logger",
+ "libc",
  "log",
  "serde",
  "serde_json",
  "windows 0.58.0",
+ "x11rb",
 ]
 
 [[package]]

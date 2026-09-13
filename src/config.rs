@@ -185,11 +185,13 @@ impl Hotkey {
     }
 
     /// Virtual-key code used by RegisterHotKey (Windows).
+    #[allow(dead_code)]
     pub fn vk_code(&self) -> u32 {
         self.key.vk_code()
     }
 
     /// Windows `RegisterHotKey` modifier flags (`HOT_KEY_MODIFIERS` bit value).
+    #[allow(dead_code)]
     pub fn mods_code(&self) -> u32 {
         self.mods as u32
     }
