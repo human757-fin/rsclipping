@@ -101,7 +101,7 @@ impl CaptureSession {
         if depth < 15 {
             bail!("unsupported root visual depth {depth} (need 24 or 32-bit)");
         }
-        let bpp = if depth == 24 { 4 } else { 4 };
+        let bpp = 4u32;
 
         Ok(CaptureSession {
             conn,
@@ -128,6 +128,7 @@ impl CaptureSession {
     }
 
     /// Pull the monitor region with XGetImage and convert to BGRA8.
+    #[allow(clippy::chunks_exact_to_as_chunks)]
     pub fn acquire(&mut self, buffer: &mut [u8], _timeout_ms: u32) -> Result<bool> {
         let need = self.frame_size_bytes();
         if buffer.len() < need {

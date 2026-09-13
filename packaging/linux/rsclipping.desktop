@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=RSClipping
+GenericName=Screen Clipper
+Comment=Screen clipper and recorder
+Exec=rsclipping
+Icon=rsclipping
+Terminal=false
+Categories=Utility;AudioVideo;Graphics;Recorder;
+Keywords=clip;screen;recorder;screenshot;
+StartupNotify=true

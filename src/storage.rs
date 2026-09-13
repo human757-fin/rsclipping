@@ -67,12 +67,10 @@ pub fn enforce_retention(cfg: &Storage) -> Result<()> {
             let mut done = 0usize;
             while done < must_remove && i < files.len() {
                 let (p, size, _) = &files[i];
-                if p.starts_with(&cfg.clip_dir) {
-                    if std::fs::remove_file(p).is_ok() {
-                        total_bytes = total_bytes.saturating_sub(*size);
-                        removed += 1;
-                        done += 1;
-                    }
+                if p.starts_with(&cfg.clip_dir) && std::fs::remove_file(p).is_ok() {
+                    total_bytes = total_bytes.saturating_sub(*size);
+                    removed += 1;
+                    done += 1;
                 }
                 i += 1;
             }

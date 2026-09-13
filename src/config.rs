@@ -79,17 +79,12 @@ impl Codec {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum EncoderBackend {
+    #[default]
     Auto,
     Cpu,
     Gpu,
-}
-
-impl Default for EncoderBackend {
-    fn default() -> Self {
-        EncoderBackend::Auto
-    }
 }
 
 /// Windows `RegisterHotKey` modifier flag bits (same values as `MOD_ALT` etc.).

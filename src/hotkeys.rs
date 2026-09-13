@@ -299,7 +299,7 @@ mod imp {
         let kb = conn.get_keyboard_mapping(first, count).ok()?.reply().ok()?;
         let per = kb.keysyms_per_keycode as usize;
         for (i, row) in kb.keysyms.chunks(per).enumerate() {
-            if row.iter().any(|s| *s == sym) {
+            if row.contains(&sym) {
                 return Some(first + i as u8);
             }
         }

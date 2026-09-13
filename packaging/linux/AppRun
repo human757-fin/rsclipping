@@ -1,0 +1,8 @@
+#!/bin/sh
+# AppImage runtime launcher
+SELF="$0"
+APPDIR="$(dirname "$(readlink -f "$SELF")")"
+export APPDIR
+export PATH="$APPDIR/usr/bin:$PATH"
+export LD_LIBRARY_PATH="$APPDIR/usr/lib:$APPDIR/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH:-}"
+exec "$APPDIR/usr/bin/rsclipping" "$@"

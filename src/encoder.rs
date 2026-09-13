@@ -35,6 +35,7 @@ pub struct Encoder {
 }
 
 impl Encoder {
+    #[allow(clippy::too_many_arguments)]
     pub fn build_ffmpeg_args(
         ffmpeg: &Path,
         codec: Codec,
@@ -472,7 +473,10 @@ impl SegmentManager {
                     Some(n) => n,
                     None => continue,
                 };
-                let Some(rest) = name.strip_prefix(&format!("seg_")).map(|r| r.strip_suffix(&format!(".{}", SEGMENT_EXTENSION))).flatten() else {
+                let Some(rest) = name
+                    .strip_prefix("seg_")
+                    .and_then(|r| r.strip_suffix(&format!(".{SEGMENT_EXTENSION}")))
+                else {
                     continue;
                 };
                 let Ok(seq) = rest.parse::<u64>() else {
