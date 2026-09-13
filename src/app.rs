@@ -3,11 +3,12 @@
 
 use crate::capture::{enumerate_monitors, CaptureSession};
 use crate::config::{Action, AppConfig};
-use crate::encoder::{run_concat, OutputJob, SegmentInfo, SEGMENT_EXTENSION};
+use crate::encoder::{run_concat, InputWindow, OutputJob, SegmentInfo, SEGMENT_EXTENSION};
 use crate::hotkeys;
+use crate::input;
 use crate::storage;
 use anyhow::{Context, Result};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Arc;
@@ -17,6 +18,36 @@ const SEG_TIMEOUT_MS: u32 = 500;
 
 fn segment_path(seg_dir: &std::path::Path, seq: u64) -> PathBuf {
     seg_dir.join(format!("seg_{:05}.{}", seq, SEGMENT_EXTENSION))
+}
+
+/// Serialize the input events captured inside `window` next to `destination`.
+fn write_input_sidecar(window: &InputWindow, destination: &Path) {
+    let events = window
+        .state
+        .lock()
+        .map(|s| input::events_in_window(&s, window.start_s * 1000.0, window.end_s * 1000.0))
+        .unwrap_or_default();
+    let clip_name = destination
+        .file_name()
+        .map(|f| f.to_string_lossy().to_string())
+        .unwrap_or_default();
+    let dur_ms = (window.end_s - window.start_s).max(0.0) * 1000.0;
+    let json = input::export_json(&events, &clip_name, dur_ms);
+    let dest = destination.with_extension("inputs.json");
+    if let Some(parent) = dest.parent() {
+        let _ = crate::utils::ensure_dir(parent);
+    }
+    match serde_json::to_string_pretty(&json) {
+        Ok(s) => match std::fs::write(&dest, s) {
+            Ok(()) => log::info!(
+                "input events sidecar saved: {} ({} events)",
+                dest.display(),
+                events.len()
+            ),
+            Err(e) => log::warn!("failed writing input sidecar {}: {e}", dest.display()),
+        },
+        Err(e) => log::warn!("failed serializing input sidecar: {e}"),
+    }
 }
 
 /// Spawn the single output worker: serializes concat jobs, then enforces retention.
@@ -43,6 +74,9 @@ fn spawn_output_worker(
                         size as f64 / (1024.0 * 1024.0),
                         job.segments.len()
                     );
+                    if let Some(window) = &job.input_window {
+                        write_input_sidecar(window, &job.destination);
+                    }
                 }
                 Err(e) => log::error!("concat failed for {}: {:#}", job.destination.display(), e),
             }
@@ -182,6 +216,17 @@ pub fn run_one_shot(cfg: &AppConfig, kind: OneShotKind, seconds: u32) -> Result<
         cfg.segment_seconds,
     )?;
 
+    let input = if cfg.input.capture_events {
+        Some(input::InputCapture::start(
+            &cfg.input,
+            cap.offset(),
+            (cap.width(), cap.height()),
+        ))
+    } else {
+        None
+    };
+    let mut overlay = input::OverlayRenderer::new();
+
     let deadline = Instant::now() + Duration::from_secs(seconds.max(1) as u64);
     let interval = Duration::from_secs_f64(1.0 / cfg.encoding.fps.max(1) as f64);
     let mut next = Instant::now();
@@ -194,6 +239,20 @@ pub fn run_one_shot(cfg: &AppConfig, kind: OneShotKind, seconds: u32) -> Result<
         }
         next = now + interval;
         if cap.acquire(&mut buffer, SEG_TIMEOUT_MS)? {
+            if let Some(ic) = &input {
+                if ic.overlay_enabled() {
+                    let snap = ic.overlay_snapshot();
+                    if !snap.is_empty() {
+                        overlay.compose(
+                            &mut buffer,
+                            cap.width(),
+                            cap.height(),
+                            ic.position(),
+                            &snap,
+                        );
+                    }
+                }
+            }
             let view = cap.frame_view(&buffer);
             if let Err(e) = encoder.write_frame(view.data) {
                 log::error!("encode error: {e}");
@@ -222,6 +281,33 @@ pub fn run_one_shot(cfg: &AppConfig, kind: OneShotKind, seconds: u32) -> Result<
     let dest = storage::destination(dir, kind_name, cfg.encoding.codec.extension())?;
     run_concat(&cfg.ffmpeg_path, &segs, &dest)?;
     log::info!("saved {} ({} segments)", dest.display(), segs.len());
+
+    if let Some(ic) = &input {
+        let events = ic
+            .state_arc()
+            .lock()
+            .map(|s| input::events_in_window(&s, 0.0, seconds.max(1) as f64 * 1000.0))
+            .unwrap_or_default();
+        let json = input::export_json(
+            &events,
+            &dest
+                .file_name()
+                .map(|f| f.to_string_lossy().to_string())
+                .unwrap_or_default(),
+            seconds.max(1) as f64 * 1000.0,
+        );
+        let sidecar = dest.with_extension("inputs.json");
+        if let Ok(s) = serde_json::to_string_pretty(&json) {
+            match std::fs::write(&sidecar, s) {
+                Ok(()) => log::info!(
+                    "input events sidecar saved: {} ({} events)",
+                    sidecar.display(),
+                    events.len()
+                ),
+                Err(e) => log::warn!("failed writing input sidecar {}: {e}", sidecar.display()),
+            }
+        }
+    }
     Ok(())
 }
 
@@ -287,6 +373,20 @@ fn daemon_loop(
         cfg.clip.history_seconds,
     );
 
+    // Input capture (mouse/keyboard/gamepad + optional on-screen overlay).
+    let input = if cfg.input.capture_events {
+        let ic = input::InputCapture::start(&cfg.input, cap.offset(), (cap.width(), cap.height()));
+        log::info!(
+            "input capture: events on, overlay {} @ {:?}",
+            if ic.overlay_enabled() { "on" } else { "off" },
+            cfg.input.overlay_position
+        );
+        Some(ic)
+    } else {
+        None
+    };
+    let mut overlay = input::OverlayRenderer::new();
+
     // Hotkey events (internal) merged with GUI actions (external).
     let (hotkey_tx, hotkey_rx) = channel::<Action>();
     let stop_hotkey = stop_flag.clone();
@@ -325,9 +425,11 @@ fn daemon_loop(
                     manager: &mut crate::encoder::SegmentManager,
                     job_tx: &Sender<OutputJob>,
                     recording_start: &mut Option<u64>,
-                    record_start_seq: &mut Option<u64>|
+                    record_start_seq: &mut Option<u64>,
+                    input: &Option<Arc<input::InputCapture>>|
      -> Result<()> {
         let open_seq = encoder.open_segment_index();
+        let fps = cfg.encoding.fps.max(1) as f64;
         match a {
             Action::Clip => {
                 let need = ((cfg.clip.default_length_seconds as f64) / cfg.segment_seconds).ceil() as usize;
@@ -336,11 +438,18 @@ fn daemon_loop(
                     log::warn!("clip ignored: rolling buffer still warming up");
                     return Ok(());
                 }
+                let start_s = open_seq.saturating_sub(need as u64) as f64 * segment_frames as f64 / fps;
+                let end_s = open_seq as f64 * segment_frames as f64 / fps;
+                let iw = input.as_ref().map(|ic| InputWindow {
+                    start_s,
+                    end_s,
+                    state: ic.state_arc(),
+                });
                 let dest = storage::destination(&cfg.storage.clip_dir, "clip", cfg.encoding.codec.extension())?;
                 log::info!("clip queued: {}", dest.display());
                 metrics.last_saved.lock().unwrap().clone_from(&dest.display().to_string());
                 metrics.clips_saved.fetch_add(1, Ordering::Relaxed);
-                let _ = job_tx.send(OutputJob { segments: segs, destination: dest });
+                let _ = job_tx.send(OutputJob { segments: segs, destination: dest, input_window: iw });
             }
             Action::RecordStart => {
                 if recording_start.is_some() {
@@ -378,6 +487,12 @@ fn daemon_loop(
                 metrics.last_saved.lock().unwrap().clone_from(&dest.display().to_string());
                 metrics.records_saved.fetch_add(1, Ordering::Relaxed);
 
+                let iw = input.as_ref().map(|ic| InputWindow {
+                    start_s: start_frame as f64 / fps,
+                    end_s: end_frame as f64 / fps,
+                    state: ic.state_arc(),
+                });
+
                 // Wait for the tail segment to close without stalling capture.
                 let frames = encoder.total_frames.clone();
                 let needed = (tail_seq + 1).saturating_mul(segment_frames);
@@ -386,7 +501,7 @@ fn daemon_loop(
                 std::thread::spawn(move || {
                     wait_for_frame_count(&frames, needed, &stop_wait);
                     std::thread::sleep(Duration::from_millis(150));
-                    let _ = tx2.send(OutputJob { segments: segs, destination: dest });
+                    let _ = tx2.send(OutputJob { segments: segs, destination: dest, input_window: iw });
                 });
             }
         }
@@ -404,6 +519,20 @@ fn daemon_loop(
         // capture + encode
         match cap.acquire(&mut buffer, SEG_TIMEOUT_MS) {
             Ok(true) => {
+                if let Some(ic) = &input {
+                    if ic.overlay_enabled() {
+                        let snap = ic.overlay_snapshot();
+                        if !snap.is_empty() {
+                            overlay.compose(
+                                &mut buffer,
+                                cap.width(),
+                                cap.height(),
+                                ic.position(),
+                                &snap,
+                            );
+                        }
+                    }
+                }
                 let view = cap.frame_view(&buffer);
                 if let Err(e) = encoder.write_frame(view.data) {
                     log::error!("encode error: {e}");
@@ -447,6 +576,7 @@ fn daemon_loop(
                     &job_tx,
                     &mut recording_start,
                     &mut record_start_seq,
+                    &input,
                 ) {
                     log::error!("action error: {e}");
                 }

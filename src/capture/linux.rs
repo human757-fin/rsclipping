@@ -127,6 +127,11 @@ impl CaptureSession {
         self.width as usize * self.height as usize * 4
     }
 
+    /// Desktop offset of the captured monitor (for translating cursor coords).
+    pub fn offset(&self) -> (i32, i32) {
+        (self.offset_x, self.offset_y)
+    }
+
     /// Pull the monitor region with XGetImage and convert to BGRA8.
     #[allow(clippy::chunks_exact_to_as_chunks)]
     pub fn acquire(&mut self, buffer: &mut [u8], _timeout_ms: u32) -> Result<bool> {

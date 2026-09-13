@@ -524,11 +524,31 @@ impl SegmentManager {
     }
 }
 
+/// Time window (in session seconds) of input events to export as a sidecar
+/// for a saved clip/recording.
+#[derive(Clone)]
+pub struct InputWindow {
+    pub start_s: f64,
+    pub end_s: f64,
+    pub state: Arc<std::sync::Mutex<crate::input::InputState>>,
+}
+
+impl std::fmt::Debug for InputWindow {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("InputWindow")
+            .field("start_s", &self.start_s)
+            .field("end_s", &self.end_s)
+            .finish_non_exhaustive()
+    }
+}
+
 /// An output job dispatched to the worker thread (concatenation = cheap copy).
 #[derive(Debug, Clone)]
 pub struct OutputJob {
     pub segments: Vec<SegmentInfo>,
     pub destination: PathBuf,
+    /// When set, a `*.inputs.json` sidecar is written next to the output.
+    pub input_window: Option<InputWindow>,
 }
 
 /// ffmpeg concat remux (no re-encode → low CPU/RAM).

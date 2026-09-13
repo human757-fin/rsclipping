@@ -56,8 +56,8 @@ Source: "assets\rsclipping.ico"; DestDir: "{app}"; Flags: ignoreversion
 Source: "portable-README.txt"; DestDir: "{app}"; DestName: "README.txt"; Flags: ignoreversion
 
 [Icons]
-Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; IconFilename: "{app}\rsclipping.ico"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; IconFilename: "{app}\rsclipping.ico"; Tasks: desktopicon
+Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Parameters: "gui"; WorkingDir: "{app}"; IconFilename: "{app}\rsclipping.ico"
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Parameters: "gui"; WorkingDir: "{app}"; IconFilename: "{app}\rsclipping.ico"; Tasks: desktopicon
 
 [Registry]
 ; Start with Windows using the installed binary (Launch at logon).

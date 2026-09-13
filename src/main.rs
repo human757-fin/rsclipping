@@ -1,9 +1,12 @@
+#![cfg_attr(windows, windows_subsystem = "windows")]
+
 mod app;
 mod capture;
 mod config;
 mod encoder;
 mod gui;
 mod hotkeys;
+mod input;
 mod storage;
 mod utils;
 
@@ -171,7 +174,9 @@ fn main() -> Result<()> {
     // only affect the current run; the saved config is only ever written by
     // `AppConfig::load` when no config file exists (clean defaults).
 
-    let cmd = cli.command.unwrap_or(Commands::Daemon);
+    // Double-clicking the app (or launching from a Start Menu shortcut)
+    // opens the dashboard; headless modes must be requested explicitly.
+    let cmd = cli.command.unwrap_or(Commands::Gui);
     match cmd {
         Commands::Gui => gui::run(cfg),
         Commands::Daemon => app::run_daemon(cfg),

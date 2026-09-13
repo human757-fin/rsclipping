@@ -438,6 +438,57 @@ impl Default for Storage {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct InputConfig {
+    /// Master switch: record mouse/keyboard/controller events for clips
+    /// (saved as a `*.inputs.json` sidecar next to each output).
+    pub capture_events: bool,
+    /// Draw a key/mouse overlay into the recorded video frames.
+    pub overlay_enabled: bool,
+    /// Which corner the overlay anchors to.
+    pub overlay_position: OverlayPosition,
+}
+
+impl Default for InputConfig {
+    fn default() -> Self {
+        Self {
+            capture_events: true,
+            overlay_enabled: false,
+            overlay_position: OverlayPosition::BottomLeft,
+        }
+    }
+}
+
+/// Corner anchor for the on-screen key overlay.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub enum OverlayPosition {
+    #[default]
+    BottomLeft,
+    BottomRight,
+    TopLeft,
+    TopRight,
+}
+
+impl OverlayPosition {
+    pub fn label(&self) -> &'static str {
+        match self {
+            OverlayPosition::BottomLeft => "Bottom-left",
+            OverlayPosition::BottomRight => "Bottom-right",
+            OverlayPosition::TopLeft => "Top-left",
+            OverlayPosition::TopRight => "Top-right",
+        }
+    }
+
+    pub fn all() -> &'static [OverlayPosition] {
+        &[
+            OverlayPosition::BottomLeft,
+            OverlayPosition::BottomRight,
+            OverlayPosition::TopLeft,
+            OverlayPosition::TopRight,
+        ]
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct AppConfig {
     /// Path to ffmpeg binary. Empty string -> search PATH and common locations.
@@ -458,6 +509,9 @@ pub struct AppConfig {
     pub segment_seconds: f64,
     /// Which monitor to capture (0 = primary).
     pub monitor_index: usize,
+    /// Input capture (mouse/keyboard/controller) and key overlay options.
+    #[serde(default)]
+    pub input: InputConfig,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -491,6 +545,7 @@ impl Default for AppConfig {
             capture_audio: false,
             segment_seconds: 2.0,
             monitor_index: 0,
+            input: InputConfig::default(),
         }
     }
 }

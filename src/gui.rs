@@ -4,7 +4,8 @@
 
 use crate::app::{spawn_daemon, DaemonHandle, ClipInfo};
 use crate::config::{
-    AppConfig, Codec, EncoderBackend, Hotkey, HotkeyKey, MOD_ALT, MOD_CTRL, MOD_SHIFT,
+    AppConfig, Codec, EncoderBackend, Hotkey, HotkeyKey, OverlayPosition, MOD_ALT, MOD_CTRL,
+    MOD_SHIFT,
 };
 use eframe::egui;
 use std::path::PathBuf;
@@ -119,6 +120,9 @@ struct SettingsDraft {
     record_dir: String,
     max_mb: u64,
     auto_cleanup: bool,
+    input_events: bool,
+    input_overlay: bool,
+    overlay_position: OverlayPosition,
 }
 
 /// Which hotkey slot the user is currently re-binding.
@@ -163,6 +167,9 @@ impl GuiApp {
             record_dir: cfg.storage.record_dir.display().to_string(),
             max_mb: cfg.storage.max_storage_mb,
             auto_cleanup: cfg.storage.auto_cleanup,
+            input_events: cfg.input.capture_events,
+            input_overlay: cfg.input.overlay_enabled,
+            overlay_position: cfg.input.overlay_position,
         };
         GuiApp {
             slot,
@@ -275,6 +282,9 @@ impl GuiApp {
         c.storage.record_dir = std::path::PathBuf::from(self.draft.record_dir.trim());
         c.storage.max_storage_mb = self.draft.max_mb;
         c.storage.auto_cleanup = self.draft.auto_cleanup;
+        c.input.capture_events = self.draft.input_events;
+        c.input.overlay_enabled = self.draft.input_overlay;
+        c.input.overlay_position = self.draft.overlay_position;
         match c.save() {
             Ok(()) => {
                 self.toast(ToastKind::Ok, "Settings saved — restart the app for them to take effect");
@@ -1098,6 +1108,36 @@ impl GuiApp {
 
                 ui.add_space(10.0);
                 panel(ui, |ui| {
+                    section_header(ui, "Input capture");
+                    ui.add_space(2.0);
+                    ui.checkbox(
+                        &mut self.draft.input_events,
+                        "Save mouse / keyboard / gamepad events (\"*.inputs.json\")",
+                    );
+                    ui.add_space(4.0);
+                    ui.checkbox(
+                        &mut self.draft.input_overlay,
+                        "Draw pressed keys + click rings into the video",
+                    );
+                    ui.add_space(4.0);
+                    settings_row(ui, "Overlay position", |ui| {
+                        egui::ComboBox::from_id_salt("overlay_pos")
+                            .selected_text(self.draft.overlay_position.label())
+                            .width(150.0)
+                            .show_ui(ui, |ui| {
+                                for &p in OverlayPosition::all() {
+                                    ui.selectable_value(
+                                        &mut self.draft.overlay_position,
+                                        p,
+                                        p.label(),
+                                    );
+                                }
+                            });
+                    });
+                });
+
+                ui.add_space(10.0);
+                panel(ui, |ui| {
                     section_header(ui, "Encoding");
                     settings_row(ui, "Codec", |ui| {
                         egui::ComboBox::from_id_salt("codec")
@@ -1218,6 +1258,9 @@ impl GuiApp {
             record_dir: cfg.storage.record_dir.display().to_string(),
             max_mb: cfg.storage.max_storage_mb,
             auto_cleanup: cfg.storage.auto_cleanup,
+            input_events: cfg.input.capture_events,
+            input_overlay: cfg.input.overlay_enabled,
+            overlay_position: cfg.input.overlay_position,
         };
     }
 

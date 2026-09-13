@@ -152,6 +152,11 @@ impl CaptureSession {
         self.width as usize * self.height as usize * 4
     }
 
+    /// Desktop offset of the captured monitor (for translating cursor coords).
+    pub fn offset(&self) -> (i32, i32) {
+        (self._offset_x, self._offset_y)
+    }
+
     /// Acquire the next frame into `buffer` (sized to `frame_size_bytes`).
     /// Returns Ok(true) on a fresh frame — caller must then call `release()`.
     pub fn acquire(&mut self, buffer: &mut [u8], timeout_ms: u32) -> Result<bool> {
